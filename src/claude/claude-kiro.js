@@ -37,8 +37,7 @@ const FULL_MODEL_MAPPING = {
     "claude-sonnet-4-20250514": "CLAUDE_SONNET_4_20250514_V1_0",
     "claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0",
     "amazonq-claude-sonnet-4-20250514": "CLAUDE_SONNET_4_20250514_V1_0",
-    "amazonq-claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0",
-    "openai.gpt-5-2-thinking": "openai.gpt-5-2-thinking"
+    "amazonq-claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0"
 };
 
 // 只保留 KIRO_MODELS 中存在的模型映射
