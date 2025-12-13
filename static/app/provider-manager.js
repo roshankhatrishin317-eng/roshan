@@ -1,0 +1,514 @@
+// 提供商管理功能模块
+
+import { providerStats, updateProviderStats } from './constants.js';
+import { showToast } from './utils.js';
+import { t } from './i18n.js';
+
+// 保存初始服务器时间和运行时间
+let initialServerTime = null;
+let initialUptime = null;
+let initialLoadTime = null;
+
+/**
+ * 加载系统信息
+ */
+async function loadSystemInfo() {
+    try {
+        const data = await window.apiClient.get('/system');
+
+        const nodeVersionEl = document.getElementById('nodeVersion');
+        const serverTimeEl = document.getElementById('serverTime');
+        const memoryUsageEl = document.getElementById('memoryUsage');
+        const uptimeEl = document.getElementById('uptime');
+
+        if (nodeVersionEl) nodeVersionEl.textContent = data.nodeVersion || '--';
+        if (memoryUsageEl) memoryUsageEl.textContent = data.memoryUsage || '--';
+        
+        // 保存初始时间用于本地计算
+        if (data.serverTime && data.uptime !== undefined) {
+            initialServerTime = new Date(data.serverTime);
+            initialUptime = data.uptime;
+            initialLoadTime = Date.now();
+        }
+        
+        // 初始显示
+        if (serverTimeEl) serverTimeEl.textContent = data.serverTime || '--';
+        if (uptimeEl) uptimeEl.textContent = data.uptime ? formatUptime(data.uptime) : '--';
+
+    } catch (error) {
+        console.error('Failed to load system info:', error);
+    }
+}
+
+/**
+ * 更新服务器时间和运行时间显示（本地计算）
+ */
+function updateTimeDisplay() {
+    if (!initialServerTime || initialUptime === null || !initialLoadTime) {
+        return;
+    }
+
+    const serverTimeEl = document.getElementById('serverTime');
+    const uptimeEl = document.getElementById('uptime');
+
+    // 计算经过的秒数
+    const elapsedSeconds = Math.floor((Date.now() - initialLoadTime) / 1000);
+
+    // 更新服务器时间
+    if (serverTimeEl) {
+        const currentServerTime = new Date(initialServerTime.getTime() + elapsedSeconds * 1000);
+        serverTimeEl.textContent = currentServerTime.toLocaleString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        });
+    }
+
+    // 更新运行时间
+    if (uptimeEl) {
+        const currentUptime = initialUptime + elapsedSeconds;
+        uptimeEl.textContent = formatUptime(currentUptime);
+    }
+}
+
+/**
+ * 加载提供商列表
+ */
+async function loadProviders() {
+    try {
+        const data = await window.apiClient.get('/providers');
+        renderProviders(data);
+    } catch (error) {
+        console.error('Failed to load providers:', error);
+    }
+}
+
+/**
+ * 渲染提供商列表
+ * @param {Object} providers - 提供商数据
+ */
+function renderProviders(providers) {
+    const container = document.getElementById('providersList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+
+    // 检查是否有提供商池数据
+    const hasProviders = Object.keys(providers).length > 0;
+    const statsGrid = document.querySelector('#providers .stats-grid');
+    
+    // 始终显示统计卡片
+    if (statsGrid) statsGrid.style.display = 'grid';
+    
+    // 定义所有支持的提供商显示顺序
+    const providerDisplayOrder = [
+        'gemini-cli-oauth',
+        'gemini-antigravity',
+        'openai-custom',
+        'claude-custom',
+        'claude-kiro-oauth',
+        'openai-qwen-oauth',
+        'openaiResponses-custom'
+    ];
+    
+    // 获取所有提供商类型并按指定顺序排序
+    // 优先显示预定义的所有提供商类型，即使某些提供商没有数据也要显示
+    let allProviderTypes;
+    if (hasProviders) {
+        // 合并预定义类型和实际存在的类型，确保显示所有预定义提供商
+        const actualProviderTypes = Object.keys(providers);
+        allProviderTypes = [...new Set([...providerDisplayOrder, ...actualProviderTypes])];
+    } else {
+        allProviderTypes = providerDisplayOrder;
+    }
+    const sortedProviderTypes = providerDisplayOrder.filter(type => allProviderTypes.includes(type))
+        .concat(allProviderTypes.filter(type => !providerDisplayOrder.includes(type)));
+    
+    // 计算总统计
+    let totalAccounts = 0;
+    let totalHealthy = 0;
+    
+    // 按照排序后的提供商类型渲染
+    sortedProviderTypes.forEach((providerType) => {
+        const accounts = hasProviders ? providers[providerType] || [] : [];
+        const providerDiv = document.createElement('div');
+        providerDiv.className = 'provider-item';
+        providerDiv.dataset.providerType = providerType;
+        providerDiv.style.cursor = 'pointer';
+
+        const healthyCount = accounts.filter(acc => acc.isHealthy).length;
+        const totalCount = accounts.length;
+        const usageCount = accounts.reduce((sum, acc) => sum + (acc.usageCount || 0), 0);
+        const errorCount = accounts.reduce((sum, acc) => sum + (acc.errorCount || 0), 0);
+        
+        totalAccounts += totalCount;
+        totalHealthy += healthyCount;
+
+        // 更新全局统计变量
+        if (!providerStats.providerTypeStats[providerType]) {
+            providerStats.providerTypeStats[providerType] = {
+                totalAccounts: 0,
+                healthyAccounts: 0,
+                totalUsage: 0,
+                totalErrors: 0,
+                lastUpdate: null
+            };
+        }
+        
+        const typeStats = providerStats.providerTypeStats[providerType];
+        typeStats.totalAccounts = totalCount;
+        typeStats.healthyAccounts = healthyCount;
+        typeStats.totalUsage = usageCount;
+        typeStats.totalErrors = errorCount;
+        typeStats.lastUpdate = new Date().toISOString();
+
+        // 为无数据状态设置特殊样式
+        const isEmptyState = !hasProviders || totalCount === 0;
+        const statusClass = isEmptyState ? 'status-empty' : (healthyCount === totalCount ? 'status-healthy' : 'status-unhealthy');
+        const statusIcon = isEmptyState ? 'fa-info-circle' : (healthyCount === totalCount ? 'fa-check-circle' : 'fa-exclamation-triangle');
+        const statusText = isEmptyState ? t('provider.status.empty') : t('provider.status.healthy', {healthy: healthyCount, total: totalCount});
+
+        providerDiv.innerHTML = `
+            <div class="provider-header">
+                <div class="provider-name">
+                    <span class="provider-type-text">${providerType}</span>
+                </div>
+                <div class="provider-header-right">
+                    ${generateAuthButton(providerType)}
+                    <div class="provider-status ${statusClass}">
+                        <i class="fas fa-${statusIcon}"></i>
+                        <span>${statusText}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="provider-stats">
+                <div class="provider-stat">
+                    <span class="provider-stat-label">${t('provider.stat.total')}</span>
+                    <span class="provider-stat-value">${totalCount}</span>
+                </div>
+                <div class="provider-stat">
+                    <span class="provider-stat-label">${t('provider.stat.healthy')}</span>
+                    <span class="provider-stat-value">${healthyCount}</span>
+                </div>
+                <div class="provider-stat">
+                    <span class="provider-stat-label">${t('provider.stat.usage')}</span>
+                    <span class="provider-stat-value">${usageCount}</span>
+                </div>
+                <div class="provider-stat">
+                    <span class="provider-stat-label">${t('provider.stat.errors')}</span>
+                    <span class="provider-stat-value">${errorCount}</span>
+                </div>
+            </div>
+        `;
+
+        // 如果是空状态，添加特殊样式
+        if (isEmptyState) {
+            providerDiv.classList.add('empty-provider');
+        }
+
+        // 添加点击事件 - 整个提供商组都可以点击
+        providerDiv.addEventListener('click', (e) => {
+            e.preventDefault();
+            openProviderManager(providerType);
+        });
+
+        container.appendChild(providerDiv);
+        
+        // 为授权按钮添加事件监听
+        const authBtn = providerDiv.querySelector('.generate-auth-btn');
+        if (authBtn) {
+            authBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 阻止事件冒泡到父元素
+                handleGenerateAuthUrl(providerType);
+            });
+        }
+    });
+    
+    // 更新统计卡片数据
+    const activeProviders = hasProviders ? Object.keys(providers).length : 0;
+    updateProviderStatsDisplay(activeProviders, totalHealthy, totalAccounts);
+}
+
+/**
+ * 更新提供商统计信息
+ * @param {number} activeProviders - 活跃提供商数
+ * @param {number} healthyProviders - 健康提供商数
+ * @param {number} totalAccounts - 总账户数
+ */
+function updateProviderStatsDisplay(activeProviders, healthyProviders, totalAccounts) {
+    // 更新全局统计变量
+    const newStats = {
+        activeProviders,
+        healthyProviders,
+        totalAccounts,
+        lastUpdateTime: new Date().toISOString()
+    };
+    
+    updateProviderStats(newStats);
+    
+    // 计算总请求数和错误数
+    let totalUsage = 0;
+    let totalErrors = 0;
+    Object.values(providerStats.providerTypeStats).forEach(typeStats => {
+        totalUsage += typeStats.totalUsage || 0;
+        totalErrors += typeStats.totalErrors || 0;
+    });
+    
+    const finalStats = {
+        ...newStats,
+        totalRequests: totalUsage,
+        totalErrors: totalErrors
+    };
+    
+    updateProviderStats(finalStats);
+    
+    // 修改：根据使用次数统计"活跃提供商"和"活动连接"
+    // "活跃提供商"：统计有使用次数(usageCount > 0)的提供商类型数量
+    let activeProvidersByUsage = 0;
+    Object.entries(providerStats.providerTypeStats).forEach(([providerType, typeStats]) => {
+        if (typeStats.totalUsage > 0) {
+            activeProvidersByUsage++;
+        }
+    });
+    
+    // "活动连接"：统计所有提供商账户的使用次数总和
+    const activeConnections = totalUsage;
+    
+    // 更新页面显示
+    const activeProvidersEl = document.getElementById('activeProviders');
+    const healthyProvidersEl = document.getElementById('healthyProviders');
+    const activeConnectionsEl = document.getElementById('activeConnections');
+    
+    if (activeProvidersEl) activeProvidersEl.textContent = activeProvidersByUsage;
+    if (healthyProvidersEl) healthyProvidersEl.textContent = healthyProviders;
+    if (activeConnectionsEl) activeConnectionsEl.textContent = activeConnections;
+    
+    // 打印调试信息到控制台
+    console.log('Provider Stats Updated:', {
+        activeProviders,
+        activeProvidersByUsage,
+        healthyProviders,
+        totalAccounts,
+        totalUsage,
+        totalErrors,
+        providerTypeStats: providerStats.providerTypeStats
+    });
+}
+
+/**
+ * 打开提供商管理模态框
+ * @param {string} providerType - 提供商类型
+ */
+async function openProviderManager(providerType) {
+    try {
+        const data = await window.apiClient.get(`/providers/${encodeURIComponent(providerType)}`);
+        
+        showProviderManagerModal(data);
+    } catch (error) {
+        console.error('Failed to load provider details:', error);
+        showToast('加载提供商详情失败', 'error');
+    }
+}
+
+/**
+ * 生成授权按钮HTML
+ * @param {string} providerType - 提供商类型
+ * @returns {string} 授权按钮HTML
+ */
+function generateAuthButton(providerType) {
+    // 只为支持OAuth的提供商显示授权按钮
+    const oauthProviders = ['gemini-cli-oauth', 'gemini-antigravity', 'openai-qwen-oauth'];
+    
+    if (!oauthProviders.includes(providerType)) {
+        return '';
+    }
+    
+    return `
+        <button class="generate-auth-btn" title="${t('auth.btn.title')}">
+            <i class="fas fa-key"></i>
+            <span>${t('auth.btn.text')}</span>
+        </button>
+    `;
+}
+
+/**
+ * 处理生成授权链接
+ * @param {string} providerType - 提供商类型
+ */
+async function handleGenerateAuthUrl(providerType) {
+    try {
+        showToast(t('auth.generating'), 'info');
+        
+        const response = await window.apiClient.post(
+            `/providers/${encodeURIComponent(providerType)}/generate-auth-url`,
+            {}
+        );
+        
+        if (response.success && response.authUrl) {
+            // 显示授权信息模态框
+            showAuthModal(response.authUrl, response.authInfo);
+        } else {
+            showToast(t('auth.fail'), 'error');
+        }
+    } catch (error) {
+        console.error('生成授权链接失败:', error);
+        showToast(t('auth.fail') + `: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * 获取提供商的授权文件路径
+ * @param {string} provider - 提供商类型
+ * @returns {string} 授权文件路径
+ */
+function getAuthFilePath(provider) {
+    const authFilePaths = {
+        'gemini-cli-oauth': '~/.gemini/oauth_creds.json',
+        'gemini-antigravity': '~/.antigravity/oauth_creds.json',
+        'openai-qwen-oauth': '~/.qwen/oauth_creds.json',
+        'claude-kiro-oauth': '~/.aws/sso/cache/kiro-auth-token.json'
+    };
+    return authFilePaths[provider] || t('auth.path.unknown');
+}
+
+/**
+ * 显示授权信息模态框
+ * @param {string} authUrl - 授权URL
+ * @param {Object} authInfo - 授权信息
+ */
+function showAuthModal(authUrl, authInfo) {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    
+    // 获取授权文件路径
+    const authFilePath = getAuthFilePath(authInfo.provider);
+    
+    let instructionsHtml = '';
+    if (authInfo.provider === 'openai-qwen-oauth') {
+        instructionsHtml = `
+            <div class="auth-instructions">
+                <h4>${t('auth.step.title')}</h4>
+                <ol>
+                    <li>${t('auth.step.1')}</li>
+                    <li>${t('auth.step.2', {code: authInfo.userCode})}</li>
+                    <li>${t('auth.step.3')}</li>
+                    <li>${t('auth.step.4', {min: Math.floor(authInfo.expiresIn / 60)})}</li>
+                </ol>
+                <p class="auth-note">${authInfo.instructions}</p>
+                <div class="auth-file-path" style="margin-top: 15px; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                    <strong style="color: var(--text-primary);"><i class="fas fa-folder-open" style="margin-right: 5px; color: var(--primary-color);"></i>${t('auth.path.label')}</strong>
+                    <code style="display: block; margin-top: 5px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; word-break: break-all; font-family: 'Courier New', monospace; color: var(--text-primary);">${authFilePath}</code>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 5px;">${t('auth.path.note')}</small>
+                </div>
+            </div>
+        `;
+    } else {
+        instructionsHtml = `
+            <div class="auth-instructions">
+                <div class="auth-warning" style="margin-bottom: 15px;">
+                    <div>
+                        <strong>${t('auth.warning.title')}</strong>
+                        <p>${t('auth.warning.text1')}</p>
+                        <p style="margin-top: 8px;">${t('auth.warning.text2', {uri: authInfo.redirectUri})}</p>
+                        <p style="margin-top: 8px; color: #d97706;">${t('auth.warning.text3')}</p>
+                    </div>
+                </div>
+                <h4>${t('auth.step.title')}</h4>
+                <ol>
+                    <li>${t('auth.step.google.1')}</li>
+                    <li>${t('auth.step.google.2')}</li>
+                    <li>${t('auth.step.google.3')}</li>
+                    <li>${t('auth.step.google.4')}</li>
+                </ol>
+                <p class="auth-note">${authInfo.instructions}</p>
+                <div class="auth-file-path" style="margin-top: 15px; padding: 10px; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 6px; border-left: 4px solid var(--primary-color);">
+                    <strong style="color: var(--text-primary);"><i class="fas fa-folder-open" style="margin-right: 5px; color: var(--primary-color);"></i>${t('auth.path.label')}</strong>
+                    <code style="display: block; margin-top: 5px; padding: 8px; background: var(--bg-tertiary); border-radius: 4px; word-break: break-all; font-family: 'Courier New', monospace; color: var(--text-primary);">${authFilePath}</code>
+                    <small style="color: var(--text-secondary); display: block; margin-top: 5px;">${t('auth.path.note')}</small>
+                </div>
+            </div>
+        `;
+    }
+    
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-key"></i>${t('auth.modal.title')}</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="auth-info">
+                    <p><strong>Provider:</strong> ${authInfo.provider}</p>
+                    ${instructionsHtml}
+                    <div class="auth-url-section">
+                        <label>${t('auth.url.label')}</label>
+                        <div class="auth-url-container">
+                            <input type="text" readonly value="${authUrl}" class="auth-url-input">
+                            <button class="copy-btn" title="${t('auth.copy.title')}">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-cancel">${t('upload.modal.close')}</button>
+                <button class="open-auth-btn">
+                    <i class="fas fa-external-link-alt"></i>
+                    ${t('auth.open')}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // 关闭按钮事件
+    const closeBtn = modal.querySelector('.modal-close');
+    const cancelBtn = modal.querySelector('.modal-cancel');
+    [closeBtn, cancelBtn].forEach(btn => {
+        btn.addEventListener('click', () => {
+            modal.remove();
+        });
+    });
+    
+    // 复制链接按钮
+    const copyBtn = modal.querySelector('.copy-btn');
+    copyBtn.addEventListener('click', () => {
+        const input = modal.querySelector('.auth-url-input');
+        input.select();
+        document.execCommand('copy');
+        showToast(t('auth.copy.success'), 'success');
+    });
+    
+    // 在浏览器中打开按钮
+    const openBtn = modal.querySelector('.open-auth-btn');
+    openBtn.addEventListener('click', () => {
+        window.open(authUrl, '_blank');
+        showToast(t('auth.open.success'), 'success');
+    });
+    
+    // 点击遮罩层关闭
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+}
+
+// 导入工具函数
+import { formatUptime } from './utils.js';
+
+export {
+    loadSystemInfo,
+    updateTimeDisplay,
+    loadProviders,
+    renderProviders,
+    updateProviderStatsDisplay,
+    openProviderManager
+};

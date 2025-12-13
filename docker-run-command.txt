@@ -1,0 +1,1 @@
+docker run -d ^ -u "$(id -u):$(id -g)"  --restart=always  --privileged=true  -p 3000:3000  -e ARGS="--api-key 123456 --host 0.0.0.0"  -v "C:\Users\shinm\.aws\sso\cache:/root/.aws/sso/cache"  -v "C:\Users\shinm\.gemini\oauth_creds.json:/root/.gemini/oauth_creds.json"  --name aiclient2api  aiclient2api 
