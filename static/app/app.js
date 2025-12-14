@@ -195,6 +195,9 @@ function initMonitorSSE() {
                 updateText('tpm', data.tpm ? data.tpm.toLocaleString() : 0);
                 updateText('ttps', data.ttps_instant ? data.ttps_instant.toLocaleString() : 0);
                 
+                updateText('tps', data.tps || 0);
+                updateText('totalTokens', data.total_tokens ? data.total_tokens.toLocaleString() : (data.total_input_tokens + data.total_output_tokens).toLocaleString());
+                
                 updateText('totalInput', data.total_input_tokens ? data.total_input_tokens.toLocaleString() : 0);
                 updateText('totalOutput', data.total_output_tokens ? data.total_output_tokens.toLocaleString() : 0);
                 updateText('totalErrors', data.total_errors);

@@ -16,6 +16,7 @@ export class ProviderPoolManager {
         'claude-custom': 'claude-3-7-sonnet-20250219',
         'claude-kiro-oauth': 'claude-haiku-4-5',
         'openai-qwen-oauth': 'qwen3-coder-flash',
+        'openai-iflow-oauth': 'gpt-4o-mini',
         'openaiResponses-custom': 'gpt-4o-mini'
     };
 
@@ -415,6 +416,26 @@ export class ProviderPoolManager {
                     parts: [{ text: baseMessage.content }]
                 }],
                 max_tokens: 1
+            });
+            return requests;
+        }
+        
+        // iFlow OAuth 使用标准 OpenAI messages 格式
+        if (providerType === 'openai-iflow-oauth') {
+            requests.push({
+                messages: [baseMessage],
+                model: modelName,
+                max_tokens: 10
+            });
+            return requests;
+        }
+        
+        // Qwen OAuth 使用标准 OpenAI messages 格式
+        if (providerType === 'openai-qwen-oauth') {
+            requests.push({
+                messages: [baseMessage],
+                model: modelName,
+                max_tokens: 10
             });
             return requests;
         }

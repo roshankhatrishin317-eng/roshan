@@ -9,21 +9,32 @@ const dnsLookup = promisify(lookup);
 const dnsCache = new Map();
 const DNS_CACHE_TTL = 300000; // 5 minutes TTL
 
-async function cachedDnsLookup(hostname, options, callback) {
+function cachedDnsLookup(hostname, options, callback) {
+  // Handle case where options is the callback (2-arg call)
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
+  }
+  
   const cacheKey = `${hostname}:${options?.family || 0}`;
   const cached = dnsCache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < DNS_CACHE_TTL) {
     if (callback) {
-      callback(null, cached.address, cached.family);
+      setImmediate(() => callback(null, cached.address, cached.family));
+      return;
     }
     return { address: cached.address, family: cached.family };
   }
   
-  try {
-    const result = await dnsLookup(hostname, options);
-    const address = typeof result === 'string' ? result : result.address;
-    const family = typeof result === 'string' ? 4 : result.family;
+  // Use the original lookup with callback
+  lookup(hostname, options || {}, (err, address, family) => {
+    if (err) {
+      if (callback) {
+        callback(err);
+      }
+      return;
+    }
     
     dnsCache.set(cacheKey, {
       address,
@@ -34,13 +45,7 @@ async function cachedDnsLookup(hostname, options, callback) {
     if (callback) {
       callback(null, address, family);
     }
-    return { address, family };
-  } catch (err) {
-    if (callback) {
-      callback(err);
-    }
-    throw err;
-  }
+  });
 }
 
 // Connection pool registry for different origins
@@ -341,6 +346,7 @@ export async function prewarmConnections(origins = []) {
     'https://api.openai.com',
     'https://api.anthropic.com',
     'https://generativelanguage.googleapis.com',
+    'https://apis.iflow.cn',
   ];
   
   const allOrigins = [...new Set([...defaultOrigins, ...origins])];

@@ -10,26 +10,10 @@ async function handleChatRequest(request, reply, endpointType) {
 
     metrics.trackRequestStart();
 
-    // Inject raw request body back if Fastify parsed it
-    if (request.body) {
-       const rawReq = request.raw;
-       let bodyContent = request.body;
-       if (typeof bodyContent === 'object' && !Buffer.isBuffer(bodyContent)) {
-           bodyContent = JSON.stringify(bodyContent);
-       }
-       rawReq.on = (event, callback) => {
-          if (event === 'data') {
-             if (bodyContent) process.nextTick(() => callback(Buffer.from(bodyContent)));
-          }
-          if (event === 'end') process.nextTick(() => callback());
-          return rawReq;
-       };
-    }
-
     try {
         const apiService = await getApiService(CONFIG, model);
         const providerPoolManager = getProviderPoolManager();
-        
+
         await handleContentGenerationRequest(
             request.raw,
             reply.raw,
@@ -38,7 +22,8 @@ async function handleChatRequest(request, reply, endpointType) {
             CONFIG,
             CONFIG.PROMPT_LOG_FILENAME,
             providerPoolManager,
-            CONFIG.uuid
+            CONFIG.uuid,
+            request.body // Pass the pre-parsed body
         );
 
         metrics.trackRequestEnd();

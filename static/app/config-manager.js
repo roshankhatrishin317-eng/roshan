@@ -59,6 +59,12 @@ async function loadConfiguration() {
         const qwenOauthCredsFilePathEl = document.getElementById('qwenOauthCredsFilePath');
         if (qwenOauthCredsFilePathEl) qwenOauthCredsFilePathEl.value = data.QWEN_OAUTH_CREDS_FILE_PATH || '';
         
+        // iFlow OAuth
+        const iflowOauthCredsBase64El = document.getElementById('iflowOauthCredsBase64');
+        const iflowOauthCredsFilePathEl = document.getElementById('iflowOauthCredsFilePath');
+        if (iflowOauthCredsBase64El) iflowOauthCredsBase64El.value = data.IFLOW_OAUTH_CREDS_BASE64 || '';
+        if (iflowOauthCredsFilePathEl) iflowOauthCredsFilePathEl.value = data.IFLOW_OAUTH_CREDS_FILE_PATH || '';
+        
         // OpenAI Responses
         const openaiResponsesApiKeyEl = document.getElementById('openaiResponsesApiKey');
         const openaiResponsesBaseUrlEl = document.getElementById('openaiResponsesBaseUrl');
@@ -106,6 +112,21 @@ async function loadConfiguration() {
         if (kiroRadio) {
             kiroRadio.checked = true;
             handleKiroCredsTypeChange({ target: kiroRadio });
+        }
+        
+        // 根据iFlow凭据类型设置显示
+        let iflowAuthType = 'oauth'; // default
+        if (data.IFLOW_OAUTH_CREDS_BASE64) {
+            iflowAuthType = 'base64';
+        } else if (data.IFLOW_OAUTH_CREDS_FILE_PATH) {
+            iflowAuthType = 'file';
+        }
+        const iflowRadio = document.querySelector(`input[name="iflowAuthType"][value="${iflowAuthType}"]`);
+        if (iflowRadio) {
+            iflowRadio.checked = true;
+            // Trigger the change handler
+            const { handleIFlowAuthTypeChange } = await import('./event-handlers.js');
+            handleIFlowAuthTypeChange({ target: iflowRadio });
         }
         
         // 检查并设置提供商池菜单显示状态
@@ -173,6 +194,18 @@ async function saveConfiguration() {
             
         case 'openai-qwen-oauth':
             config.QWEN_OAUTH_CREDS_FILE_PATH = document.getElementById('qwenOauthCredsFilePath')?.value || '';
+            break;
+            
+        case 'openai-iflow-oauth':
+            const iflowAuthType = document.querySelector('input[name="iflowAuthType"]:checked')?.value;
+            if (iflowAuthType === 'base64') {
+                config.IFLOW_OAUTH_CREDS_BASE64 = document.getElementById('iflowOauthCredsBase64')?.value || '';
+                config.IFLOW_OAUTH_CREDS_FILE_PATH = null;
+            } else if (iflowAuthType === 'file') {
+                config.IFLOW_OAUTH_CREDS_BASE64 = null;
+                config.IFLOW_OAUTH_CREDS_FILE_PATH = document.getElementById('iflowOauthCredsFilePath')?.value || '';
+            }
+            // For oauth and cookie types, credentials are saved automatically by the backend
             break;
             
         case 'openaiResponses-custom':

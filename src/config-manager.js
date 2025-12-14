@@ -76,6 +76,8 @@ export async function initializeConfig(args = process.argv.slice(2), configFileP
             KIRO_OAUTH_CREDS_BASE64: null,
             KIRO_OAUTH_CREDS_FILE_PATH: null,
             QWEN_OAUTH_CREDS_FILE_PATH: null,
+            IFLOW_OAUTH_CREDS_FILE_PATH: null,
+            IFLOW_OAUTH_CREDS_BASE64: null,
             PROJECT_ID: null,
             SYSTEM_PROMPT_FILE_PATH: INPUT_SYSTEM_PROMPT_FILE, // Default value
             SYSTEM_PROMPT_MODE: 'append',
@@ -231,6 +233,20 @@ export async function initializeConfig(args = process.argv.slice(2), configFileP
            } else {
                console.warn(`[Config Warning] --qwen-oauth-creds-file flag requires a value.`);
            }
+       } else if (args[i] === '--iflow-oauth-creds-base64') {
+           if (i + 1 < args.length) {
+               currentConfig.IFLOW_OAUTH_CREDS_BASE64 = args[i + 1];
+               i++;
+           } else {
+               console.warn(`[Config Warning] --iflow-oauth-creds-base64 flag requires a value.`);
+           }
+       } else if (args[i] === '--iflow-oauth-creds-file') {
+           if (i + 1 < args.length) {
+               currentConfig.IFLOW_OAUTH_CREDS_FILE_PATH = args[i + 1];
+               i++;
+           } else {
+               console.warn(`[Config Warning] --iflow-oauth-creds-file flag requires a value.`);
+           }
        } else if (args[i] === '--cron-near-minutes') {
             if (i + 1 < args.length) {
                 currentConfig.CRON_NEAR_MINUTES = parseInt(args[i + 1], 10);
@@ -367,6 +383,15 @@ export function logProviderSpecificDetails(provider, config) {
             break;
         case MODEL_PROVIDER.QWEN_API:
             console.log(`  [openai-qwen-oauth] OAuth Creds File Path: ${config.QWEN_OAUTH_CREDS_FILE_PATH || 'Default'}`);
+            break;
+        case MODEL_PROVIDER.IFLOW_API:
+            if (config.IFLOW_OAUTH_CREDS_FILE_PATH) {
+                console.log(`  [openai-iflow-oauth] OAuth Creds File Path: ${config.IFLOW_OAUTH_CREDS_FILE_PATH}`);
+            } else if (config.IFLOW_OAUTH_CREDS_BASE64) {
+                console.log(`  [openai-iflow-oauth] OAuth Creds Source: Provided via Base64 string`);
+            } else {
+                console.log(`  [openai-iflow-oauth] OAuth Creds: Default discovery (~/.iflow/oauth_creds.json)`);
+            }
             break;
         default:
             console.log(`  [${provider}] Provider initialized.`);

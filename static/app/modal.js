@@ -1173,6 +1173,10 @@ async function addProvider(providerType) {
         case 'openai-qwen-oauth':
             providerConfig.QWEN_OAUTH_CREDS_FILE_PATH = document.getElementById('newQwenOauthCredsFilePath')?.value || '';
             break;
+        case 'openai-iflow-oauth':
+            providerConfig.IFLOW_OAUTH_CREDS_FILE_PATH = document.getElementById('newIflowOauthCredsFilePath')?.value || '';
+            providerConfig.IFLOW_OAUTH_CREDS_BASE64 = document.getElementById('newIflowOauthCredsBase64')?.value || '';
+            break;
         case 'gemini-antigravity':
             providerConfig.PROJECT_ID = document.getElementById('newProjectId')?.value || '';
             providerConfig.ANTIGRAVITY_OAUTH_CREDS_FILE_PATH = document.getElementById('newAntigravityOauthCredsFilePath')?.value || '';

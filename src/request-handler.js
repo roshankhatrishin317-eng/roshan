@@ -1,5 +1,5 @@
 import deepmerge from 'deepmerge';
-import { handleError, isAuthorized } from './common.js';
+import { handleError, isAuthorized, getRequestBody } from './common.js';
 import { handleUIApiRequests, serveStaticFiles } from './ui-manager.js';
 import { handleAPIRequests } from './api-manager.js';
 import { getApiService } from './service-manager.js';
@@ -7,6 +7,7 @@ import { getProviderPoolManager } from './service-manager.js';
 import { MODEL_PROVIDER } from './common.js';
 import { PROMPT_LOG_FILENAME } from './config-manager.js';
 import { handleOllamaRequest, handleOllamaShow } from './ollama-handler.js';
+import { getProviderByModel } from './provider-models.js';
 
 /**
  * Main request handler. It authenticates the request, determines the endpoint type,
@@ -94,6 +95,40 @@ export function createRequestHandler(config, providerPoolManager) {
                 requestUrl.pathname = path;
             } else if (firstSegment && !isValidProvider) {
                 console.log(`[Config] Ignoring invalid MODEL_PROVIDER in path segment: ${firstSegment}`);
+            }
+        }
+
+        // Auto-detect provider from model name in request body (for POST requests)
+        // This allows all models to be called from the default endpoint
+        let requestBodyForRouting = null;
+        if (method === 'POST' && (path === '/v1/chat/completions' || path === '/v1/messages' || path === '/v1/responses')) {
+            try {
+                // Peek at the request body to get the model name
+                const chunks = [];
+                for await (const chunk of req) {
+                    chunks.push(chunk);
+                }
+                const bodyBuffer = Buffer.concat(chunks);
+                const bodyString = bodyBuffer.toString();
+                requestBodyForRouting = JSON.parse(bodyString);
+                
+                // Store the parsed body for later use
+                req.parsedBody = requestBodyForRouting;
+                
+                // Force provider switch based on model (direct routing, no health check)
+                if (requestBodyForRouting.model) {
+                    const detectedProvider = getProviderByModel(requestBodyForRouting.model);
+                    if (detectedProvider) {
+                        // Always switch to the detected provider for these models
+                        if (detectedProvider !== currentConfig.MODEL_PROVIDER) {
+                            console.log(`[Config] MODEL_PROVIDER switched from '${currentConfig.MODEL_PROVIDER}' to '${detectedProvider}' based on model '${requestBodyForRouting.model}'`);
+                            currentConfig.MODEL_PROVIDER = detectedProvider;
+                        }
+                    }
+                }
+            } catch (e) {
+                // If we can't parse the body, continue with default provider
+                console.warn(`[Config] Failed to parse request body for model detection: ${e.message}`);
             }
         }
 

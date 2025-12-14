@@ -8,7 +8,7 @@ import { getAllProviderModels, getProviderModels } from './provider-models.js';
 import { CONFIG } from './config-manager.js';
 import { serviceInstances } from './adapter.js';
 import { initApiService } from './service-manager.js';
-import { handleGeminiCliOAuth, handleGeminiAntigravityOAuth, handleQwenOAuth } from './oauth-handlers.js';
+import { handleGeminiCliOAuth, handleGeminiAntigravityOAuth, handleQwenOAuth, handleIFlowOAuth, handleIFlowCookieAuth } from './oauth-handlers.js';
 import {
     generateUUID,
     normalizePath,
@@ -398,83 +398,69 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
 
     // 文件上传API
     if (method === 'POST' && pathParam === '/api/upload-oauth-credentials') {
-        const uploadMiddleware = upload.single('file');
-        
-        uploadMiddleware(req, res, async (err) => {
-            if (err) {
-                console.error('文件上传错误:', err.message);
+        try {
+            // File should already be parsed by Fastify multipart and added to req.file
+            if (!req.file) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     error: {
-                        message: err.message || '文件上传失败'
+                        message: '没有文件被上传'
                     }
                 }));
-                return;
+                return true;
             }
 
-            try {
-                if (!req.file) {
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({
-                        error: {
-                            message: '没有文件被上传'
-                        }
-                    }));
-                    return;
-                }
+            const provider = req.body?.provider || 'common';
 
-                // multer执行完成后，表单字段已解析到req.body中
-                const provider = req.body.provider || 'common';
-                const tempFilePath = req.file.path;
-                
-                // 根据实际的provider移动文件到正确的目录
-                let targetDir = path.join(process.cwd(), 'configs', provider);
-                
-                // 如果是kiro类型的凭证，需要再包裹一层文件夹
-                if (provider === 'kiro') {
-                    // 使用时间戳作为子文件夹名称，确保每个上传的文件都有独立的目录
-                    const timestamp = Date.now();
-                    const originalNameWithoutExt = path.parse(req.file.originalname).name;
-                    const subFolder = `${timestamp}_${originalNameWithoutExt}`;
-                    targetDir = path.join(targetDir, subFolder);
-                }
-                
-                await fs.mkdir(targetDir, { recursive: true });
-                
-                const targetFilePath = path.join(targetDir, req.file.filename);
-                await fs.rename(tempFilePath, targetFilePath);
-                
-                const relativePath = path.relative(process.cwd(), targetFilePath);
+            // 根据实际的provider移动文件到正确的目录
+            let targetDir = path.join(process.cwd(), 'configs', provider);
 
-                // 广播更新事件
-                broadcastEvent('config_update', {
-                    action: 'add',
-                    filePath: relativePath,
-                    provider: provider,
-                    timestamp: new Date().toISOString()
-                });
-
-                console.log(`[UI API] OAuth凭据文件已上传: ${targetFilePath} (提供商: ${provider})`);
-
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    success: true,
-                    message: '文件上传成功',
-                    filePath: relativePath,
-                    originalName: req.file.originalname,
-                    provider: provider
-                }));
-
-            } catch (error) {
-                console.error('文件上传处理错误:', error);
-                res.writeHead(500, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    error: {
-                        message: '文件上传处理失败: ' + error.message
-                    }
-                }));
+            // 如果是kiro类型的凭证，需要再包裹一层文件夹
+            if (provider === 'kiro') {
+                // 使用时间戳作为子文件夹名称，确保每个上传的文件都有独立的目录
+                const timestamp = Date.now();
+                const originalNameWithoutExt = path.parse(req.file.originalname).name;
+                const subFolder = `${timestamp}_${originalNameWithoutExt}`;
+                targetDir = path.join(targetDir, subFolder);
             }
-        });
+
+            await fs.mkdir(targetDir, { recursive: true });
+
+            const targetFilePath = path.join(targetDir, req.file.filename);
+
+            // Write buffer to file (since Fastify multipart gives us buffer, not path)
+            await fs.writeFile(targetFilePath, req.file.buffer);
+
+            const relativePath = path.relative(process.cwd(), targetFilePath);
+
+            // 广播更新事件
+            broadcastEvent('config_update', {
+                action: 'add',
+                filePath: relativePath,
+                provider: provider,
+                timestamp: new Date().toISOString()
+            });
+
+            console.log(`[UI API] OAuth凭据文件已上传: ${targetFilePath} (提供商: ${provider})`);
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                message: '文件上传成功',
+                filePath: relativePath,
+                originalName: req.file.originalname,
+                provider: provider
+            }));
+
+        } catch (error) {
+            console.error('文件上传处理错误:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: {
+                    message: '文件上传处理失败: ' + error.message
+                }
+            }));
+        }
         return true;
     }
 
@@ -519,6 +505,8 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
             if (newConfig.KIRO_OAUTH_CREDS_BASE64 !== undefined) currentConfig.KIRO_OAUTH_CREDS_BASE64 = newConfig.KIRO_OAUTH_CREDS_BASE64;
             if (newConfig.KIRO_OAUTH_CREDS_FILE_PATH !== undefined) currentConfig.KIRO_OAUTH_CREDS_FILE_PATH = newConfig.KIRO_OAUTH_CREDS_FILE_PATH;
             if (newConfig.QWEN_OAUTH_CREDS_FILE_PATH !== undefined) currentConfig.QWEN_OAUTH_CREDS_FILE_PATH = newConfig.QWEN_OAUTH_CREDS_FILE_PATH;
+            if (newConfig.IFLOW_OAUTH_CREDS_BASE64 !== undefined) currentConfig.IFLOW_OAUTH_CREDS_BASE64 = newConfig.IFLOW_OAUTH_CREDS_BASE64;
+            if (newConfig.IFLOW_OAUTH_CREDS_FILE_PATH !== undefined) currentConfig.IFLOW_OAUTH_CREDS_FILE_PATH = newConfig.IFLOW_OAUTH_CREDS_FILE_PATH;
             if (newConfig.SYSTEM_PROMPT_FILE_PATH !== undefined) currentConfig.SYSTEM_PROMPT_FILE_PATH = newConfig.SYSTEM_PROMPT_FILE_PATH;
             if (newConfig.SYSTEM_PROMPT_MODE !== undefined) currentConfig.SYSTEM_PROMPT_MODE = newConfig.SYSTEM_PROMPT_MODE;
             if (newConfig.PROMPT_LOG_BASE_NAME !== undefined) currentConfig.PROMPT_LOG_BASE_NAME = newConfig.PROMPT_LOG_BASE_NAME;
@@ -571,6 +559,8 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
                     KIRO_OAUTH_CREDS_BASE64: currentConfig.KIRO_OAUTH_CREDS_BASE64,
                     KIRO_OAUTH_CREDS_FILE_PATH: currentConfig.KIRO_OAUTH_CREDS_FILE_PATH,
                     QWEN_OAUTH_CREDS_FILE_PATH: currentConfig.QWEN_OAUTH_CREDS_FILE_PATH,
+                    IFLOW_OAUTH_CREDS_BASE64: currentConfig.IFLOW_OAUTH_CREDS_BASE64,
+                    IFLOW_OAUTH_CREDS_FILE_PATH: currentConfig.IFLOW_OAUTH_CREDS_FILE_PATH,
                     SYSTEM_PROMPT_FILE_PATH: currentConfig.SYSTEM_PROMPT_FILE_PATH,
                     SYSTEM_PROMPT_MODE: currentConfig.SYSTEM_PROMPT_MODE,
                     PROMPT_LOG_BASE_NAME: currentConfig.PROMPT_LOG_BASE_NAME,
@@ -1233,6 +1223,10 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
                 const result = await handleQwenOAuth(currentConfig);
                 authUrl = result.authUrl;
                 authInfo = result.authInfo;
+            } else if (providerType === 'openai-iflow-oauth') {
+                const result = await handleIFlowOAuth(currentConfig);
+                authUrl = result.authUrl;
+                authInfo = result.authInfo;
             } else {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
@@ -1257,6 +1251,63 @@ export async function handleUIApiRequests(method, pathParam, req, res, currentCo
             res.end(JSON.stringify({
                 error: {
                     message: `生成授权链接失败: ${error.message}`
+                }
+            }));
+            return true;
+        }
+    }
+
+    // iFlow OAuth authentication endpoint
+    if (method === 'POST' && pathParam === '/oauth/iflow') {
+        try {
+            const result = await handleIFlowOAuth(currentConfig);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                success: true,
+                authUrl: result.authUrl,
+                authInfo: result.authInfo
+            }));
+            return true;
+        } catch (error) {
+            console.error('[UI API] iFlow OAuth failed:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: {
+                    message: `iFlow OAuth 授权失败: ${error.message}`
+                }
+            }));
+            return true;
+        }
+    }
+
+    // iFlow Cookie authentication endpoint
+    if (method === 'POST' && pathParam === '/oauth/iflow/cookie') {
+        try {
+            const body = await getRequestBody(req);
+            const { cookie } = body;
+
+            if (!cookie) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    error: {
+                        message: 'Cookie is required'
+                    }
+                }));
+                return true;
+            }
+
+            const result = await handleIFlowCookieAuth(cookie);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+            return true;
+        } catch (error) {
+            console.error('[UI API] iFlow Cookie authentication failed:', error);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                error: {
+                    message: `iFlow Cookie 认证失败: ${error.message}`
                 }
             }));
             return true;
@@ -1673,6 +1724,7 @@ async function scanConfigFiles(currentConfig, providerPoolManager) {
     addToUsedPaths(usedPaths, currentConfig.GEMINI_OAUTH_CREDS_FILE_PATH);
     addToUsedPaths(usedPaths, currentConfig.KIRO_OAUTH_CREDS_FILE_PATH);
     addToUsedPaths(usedPaths, currentConfig.QWEN_OAUTH_CREDS_FILE_PATH);
+    addToUsedPaths(usedPaths, currentConfig.IFLOW_OAUTH_CREDS_FILE_PATH);
 
     // 使用最新的提供商池数据
     let providerPools = currentConfig.providerPools;
@@ -1688,6 +1740,7 @@ async function scanConfigFiles(currentConfig, providerPoolManager) {
                 addToUsedPaths(usedPaths, provider.KIRO_OAUTH_CREDS_FILE_PATH);
                 addToUsedPaths(usedPaths, provider.QWEN_OAUTH_CREDS_FILE_PATH);
                 addToUsedPaths(usedPaths, provider.ANTIGRAVITY_OAUTH_CREDS_FILE_PATH);
+                addToUsedPaths(usedPaths, provider.IFLOW_OAUTH_CREDS_FILE_PATH);
             }
         }
     }

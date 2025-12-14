@@ -3,131 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor - AIClient2API</title>
-    <link rel="stylesheet" href="app/styles.css">
+    <title>Shinmen API - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .monitor-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-color: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
             margin-bottom: 30px;
         }
-        .monitor-card {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .monitor-card h3 {
+
+        .header h1 {
             margin: 0;
-            font-size: 14px;
-            color: #666;
-            text-transform: uppercase;
-        }
-        .monitor-card .value {
-            font-size: 36px;
-            font-weight: bold;
-            color: #059669;
-            margin: 10px 0;
-        }
-        .monitor-card .unit {
-            font-size: 12px;
-            color: #999;
-        }
-        .charts-container {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .refresh-bar {
-            margin-bottom: 20px;
+            font-size: 24px;
+            font-weight: 700;
             display: flex;
-            justify-content: flex-end;
             align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
         .pulse {
-            width: 10px;
-            height: 10px;
-            background-color: #059669;
+            width: 8px;
+            height: 8px;
+            background-color: var(--success-color);
             border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-            animation: pulse-animation 1.5s infinite;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0.7);
+            animation: pulse-animation 2s infinite;
         }
+
         @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(5, 150, 105, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .logout-btn {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .logout-btn:hover {
+            color: var(--text-primary);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .card h3 {
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card .value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            font-feature-settings: "tnum";
+            font-variant-numeric: tabular-nums;
+        }
+
+        .card .unit {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .card-icon {
+            position: absolute;
+            top: 24px;
+            right: 24px;
+            font-size: 24px;
+            opacity: 0.1;
+            color: var(--text-primary);
+        }
+
+        .card.highlight .value {
+            color: var(--accent-color);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .card.error-card .value {
+            color: var(--error-color);
+        }
+
+        .logs-section {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+            margin-top: 24px;
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .logs-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        pre {
+            background-color: #0b1120;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #e2e8f0;
+            border: 1px solid var(--border-color);
+            margin: 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 30px 0 15px 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .loading {
+            color: var(--text-secondary);
+            font-style: italic;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <div class="header-content">
-                <h1><i class="fas fa-chart-line"></i> 实时监控 (Live Monitor)</h1>
-                <div class="header-controls">
-                    <span class="status-badge"><i class="pulse"></i> 实时连接</span>
-                    <a href="index.html" class="logout-btn"><i class="fas fa-home"></i> 返回控制台</a>
-                </div>
+            <h1><i class="fas fa-bolt"></i> Shinmen API</h1>
+            <div class="header-controls">
+                <span class="status-badge"><i class="pulse"></i> Live System</span>
+                <a href="index.html" class="logout-btn"><i class="fas fa-home"></i> Console</a>
             </div>
         </header>
 
         <div class="main-content">
-            <main class="content" style="padding: 20px;">
-                <!-- Real-time Counters -->
-                <div class="monitor-grid">
-                    <div class="monitor-card">
-                        <h3>Active Requests</h3>
-                        <div class="value" id="activeRequests">0</div>
-                        <div class="unit">Concurrency</div>
-                    </div>
-                    <div class="monitor-card">
-                        <h3>Throughput (RPM)</h3>
-                        <div class="value" id="rpm">0</div>
-                        <div class="unit">Requests / Min</div>
-                    </div>
-                    <div class="monitor-card">
-                        <h3>Throughput (TPM)</h3>
-                        <div class="value" id="tpm">0</div>
-                        <div class="unit">Tokens / Min</div>
-                    </div>
-                    <div class="monitor-card">
-                        <h3>Speed (TTPS)</h3>
-                        <div class="value" id="ttps">0</div>
-                        <div class="unit">Tokens / Sec (Instant)</div>
-                    </div>
+            <div class="section-title">Live Performance</div>
+            <div class="grid-container">
+                <div class="card highlight">
+                    <h3><i class="fas fa-stopwatch"></i> Transactions / Sec</h3>
+                    <div class="value" id="tps">0</div>
+                    <div class="unit">TPS (Instant)</div>
+                    <i class="fas fa-bolt card-icon"></i>
                 </div>
+                <div class="card">
+                    <h3><i class="fas fa-microchip"></i> Active Requests</h3>
+                    <div class="value" id="activeRequests">0</div>
+                    <div class="unit">Concurrency</div>
+                    <i class="fas fa-network-wired card-icon"></i>
+                </div>
+                <div class="card">
+                    <h3><i class="fas fa-tachometer-alt"></i> Throughput (RPM)</h3>
+                    <div class="value" id="rpm">0</div>
+                    <div class="unit">Requests / Min</div>
+                    <i class="fas fa-server card-icon"></i>
+                </div>
+                <div class="card">
+                    <h3><i class="fas fa-stream"></i> Token Speed (TTPS)</h3>
+                    <div class="value" id="ttps">0</div>
+                    <div class="unit">Tokens / Sec</div>
+                    <i class="fas fa-wind card-icon"></i>
+                </div>
+            </div>
 
-                <div class="monitor-grid">
-                     <div class="monitor-card">
-                        <h3>Total Input Tokens</h3>
-                        <div class="value" id="totalInput" style="color: #2563eb;">0</div>
-                    </div>
-                     <div class="monitor-card">
-                        <h3>Total Output Tokens</h3>
-                        <div class="value" id="totalOutput" style="color: #9333ea;">0</div>
-                    </div>
-                     <div class="monitor-card">
-                        <h3>Total Errors</h3>
-                        <div class="value" id="totalErrors" style="color: #dc2626;">0</div>
-                    </div>
+            <div class="section-title">Lifetime Totals</div>
+            <div class="grid-container">
+                <div class="card">
+                    <h3><i class="fas fa-coins"></i> Total Tokens</h3>
+                    <div class="value" id="totalTokens">0</div>
+                    <div class="unit">Input + Output</div>
+                    <i class="fas fa-layer-group card-icon"></i>
                 </div>
-                
-                <div class="charts-container">
-                    <h3>实时数据 (Real-time JSON)</h3>
-                    <pre id="rawJson" style="background: #f4f4f5; padding: 15px; border-radius: 4px; overflow-x: auto; font-family: monospace; font-size: 12px;"></pre>
+                <div class="card">
+                    <h3><i class="fas fa-arrow-right"></i> Total Input</h3>
+                    <div class="value" id="totalInput" style="color: #60a5fa;">0</div>
+                    <div class="unit">Tokens</div>
+                    <i class="fas fa-sign-in-alt card-icon"></i>
                 </div>
+                <div class="card">
+                    <h3><i class="fas fa-arrow-left"></i> Total Output</h3>
+                    <div class="value" id="totalOutput" style="color: #a78bfa;">0</div>
+                    <div class="unit">Tokens</div>
+                    <i class="fas fa-sign-out-alt card-icon"></i>
+                </div>
+                <div class="card error-card">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Total Errors</h3>
+                    <div class="value" id="totalErrors">0</div>
+                    <div class="unit">Requests</div>
+                    <i class="fas fa-bug card-icon"></i>
+                </div>
+            </div>
 
-            </main>
+            <div class="logs-section">
+                <div class="logs-header">
+                    <h3><i class="fas fa-code"></i> Live Metrics Stream</h3>
+                </div>
+                <pre id="rawJson"><span class="loading">Connecting to metrics stream...</span></pre>
+            </div>
         </div>
     </div>
 
     <script>
-        // Use Server-Sent Events (SSE) instead of polling
+        // Use Server-Sent Events (SSE)
         let evtSource;
 
         function connectSSE() {
@@ -136,20 +306,32 @@
             evtSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 
-                document.getElementById('activeRequests').textContent = data.active_requests;
-                document.getElementById('rpm').textContent = data.rpm;
-                document.getElementById('tpm').textContent = data.tpm.toLocaleString();
-                document.getElementById('ttps').textContent = data.ttps_instant.toLocaleString();
+                // Update elements safely
+                const update = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = val;
+                };
+
+                const formatNum = (num) => num ? num.toLocaleString() : '0';
+
+                update('activeRequests', data.active_requests);
+                update('rpm', data.rpm);
+                update('ttps', formatNum(data.ttps_instant));
                 
-                document.getElementById('totalInput').textContent = data.total_input_tokens.toLocaleString();
-                document.getElementById('totalOutput').textContent = data.total_output_tokens.toLocaleString();
-                document.getElementById('totalErrors').textContent = data.total_errors;
+                // New metrics
+                update('tps', data.tps || 0);
+                update('totalTokens', formatNum(data.total_tokens || (data.total_input_tokens + data.total_output_tokens)));
+                
+                update('totalInput', formatNum(data.total_input_tokens));
+                update('totalOutput', formatNum(data.total_output_tokens));
+                update('totalErrors', data.total_errors);
                 
                 document.getElementById('rawJson').textContent = JSON.stringify(data, null, 2);
             };
 
             evtSource.onerror = function(err) {
                 console.error("EventSource failed:", err);
+                document.getElementById('rawJson').innerHTML = '<span class="error" style="color:#ef4444">Connection lost. Reconnecting...</span>';
                 evtSource.close();
                 // Reconnect after 2 seconds
                 setTimeout(connectSSE, 2000);

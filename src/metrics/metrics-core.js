@@ -107,6 +107,12 @@ class MetricsCore extends EventEmitter {
       tpm_input: inputTokensLastMin,
       tpm_output: outputTokensLastMin,
       
+      // TPS (Transactions Per Second) - Last completed second
+      tps: this.history[(this.currentSecondIndex - 1 + 60) % 60].requests,
+
+      // Total Tokens (Combined)
+      total_tokens: this.totalInputTokens + this.totalOutputTokens,
+
       // TTPS (Tokens Per Second) - Averaged over last minute or just last second?
       // Typically TTPS is instantaneous (last second) or short avg.
       // Let's provide last second rate for "Live" feel.

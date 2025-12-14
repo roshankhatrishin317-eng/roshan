@@ -793,6 +793,12 @@ function detectProviderFromPath(filePath) {
             shortName: 'qwen-oauth'
         },
         {
+            patterns: ['configs/iflow/', '/iflow/'],
+            providerType: 'openai-iflow-oauth',
+            displayName: 'iFlow OAuth',
+            shortName: 'iflow-oauth'
+        },
+        {
             patterns: ['configs/antigravity/', '/antigravity/'],
             providerType: 'gemini-antigravity',
             displayName: 'Gemini Antigravity',

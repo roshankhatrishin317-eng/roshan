@@ -67,7 +67,7 @@ class AuthManager {
      */
     async logout() {
         this.clearToken();
-        window.location.href = '/login.html';
+        window.location.href = '/shin/login.html';
     }
 }
 
@@ -98,7 +98,7 @@ class ApiClient {
      */
     handleUnauthorized() {
         this.authManager.clearToken();
-        window.location.href = '/login.html';
+        window.location.href = '/shin/login.html';
     }
 
     /**
@@ -241,12 +241,12 @@ async function initAuth() {
         } catch (error) {
             // Token无效，清除并重定向到登录页
             authManager.clearToken();
-            window.location.href = '/login.html';
+            window.location.href = '/shin/login.html';
             return false;
         }
     } else {
         // 没有有效token，重定向到登录页
-        window.location.href = '/login.html';
+        window.location.href = '/shin/login.html';
         return false;
     }
 }

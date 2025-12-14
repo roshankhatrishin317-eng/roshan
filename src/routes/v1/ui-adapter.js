@@ -7,23 +7,53 @@ export default async function (fastify, opts) {
   fastify.all('/api/*', async (request, reply) => {
     // Hijack the response to prevent Fastify from sending its own response
     reply.hijack();
-    
+
     const method = request.raw.method;
-    const url = request.raw.url; 
-    
-    // If the body was parsed by Fastify (e.g. via content-type parser), 
+    const url = request.raw.url;
+
+    // Handle multipart/form-data for file uploads
+    if (request.isMultipart && request.isMultipart()) {
+      const rawReq = request.raw;
+
+      try {
+        // Parse multipart data using Fastify's multipart plugin
+        const data = await request.file();
+
+        if (data) {
+          // Convert Fastify multipart format to multer format for legacy handler
+          const buffer = await data.toBuffer();
+          rawReq.file = {
+            fieldname: data.fieldname,
+            originalname: data.filename,
+            encoding: data.encoding,
+            mimetype: data.mimetype,
+            buffer: buffer,
+            size: buffer.length,
+            filename: `upload-${Date.now()}-${data.filename}`,
+            path: null  // Will be set by the handler
+          };
+
+          // Parse form fields
+          rawReq.body = {};
+          for (const [key, value] of Object.entries(data.fields || {})) {
+            rawReq.body[key] = value.value;
+          }
+        }
+      } catch (err) {
+        console.error('[UI Adapter] Multipart parsing error:', err);
+      }
+    }
+    // If the body was parsed by Fastify (e.g. via content-type parser),
     // we need to make sure the legacy handler can still read it.
     // handleUIApiRequests uses `req.on('data')`.
-    
-    // If request.body exists, it means Fastify consumed the stream.
-    if (request.body) {
+    else if (request.body) {
        const rawReq = request.raw;
        let bodyContent = request.body;
-       
+
        if (typeof bodyContent === 'object' && !Buffer.isBuffer(bodyContent)) {
            bodyContent = JSON.stringify(bodyContent);
        }
-       
+
        // Override 'on' to replay data for the legacy handler
        // This effectively mocks the stream for `parseRequestBody` in ui-manager.js
        rawReq.on = (event, callback) => {

@@ -257,7 +257,7 @@
                     localStorage.setItem('authToken', data.token);
                     
                     // 跳转到主页
-                    window.location.href = '/';
+                    window.location.href = '/shin';
                 } else {
                     showError(data.message || '密码错误，请重试');
                     loginButton.disabled = false;
@@ -288,7 +288,7 @@
             
             if (token) {
                 // Token存在，跳转到主页
-                window.location.href = '/';
+                window.location.href = '/shin';
             }
         }
 

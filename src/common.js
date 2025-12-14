@@ -5,6 +5,7 @@ import * as crypto from 'crypto'; // Import crypto for MD5 hashing
 import { ApiServiceAdapter } from './adapter.js'; // Import ApiServiceAdapter
 import { convertData, getOpenAIStreamChunkStop, getOpenAIResponsesStreamChunkBegin, getOpenAIResponsesStreamChunkEnd } from './convert.js';
 import { ProviderStrategyFactory } from './provider-strategies.js';
+import { resolveModelAlias } from './provider-models.js';
 
 import { metrics } from './metrics/metrics-core.js';
 
@@ -31,6 +32,7 @@ export const MODEL_PROVIDER = {
     CLAUDE_CUSTOM: 'claude-custom',
     KIRO_API: 'claude-kiro-oauth',
     QWEN_API: 'openai-qwen-oauth',
+    IFLOW_API: 'openai-iflow-oauth',
 }
 
 /**
@@ -411,10 +413,16 @@ export async function handleContentGenerationRequest(req, res, service, endpoint
     }
 
     // 2. Extract model and determine if the request is for streaming.
-    const { model, isStream } = _extractModelAndStreamInfo(req, originalRequestBody, fromProvider);
+    const { model: rawModel, isStream } = _extractModelAndStreamInfo(req, originalRequestBody, fromProvider);
 
-    if (!model) {
+    if (!rawModel) {
         throw new Error("Could not determine the model from the request.");
+    }
+    
+    // Resolve model alias (e.g., qwen3-pro -> qwen3-coder-plus)
+    const model = resolveModelAlias(rawModel);
+    if (model !== rawModel) {
+        console.log(`[Model Alias] Resolved '${rawModel}' to '${model}'`);
     }
     console.log(`[Content Generation] Model: ${model}, Stream: ${isStream}`);
 

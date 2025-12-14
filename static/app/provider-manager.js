@@ -112,6 +112,7 @@ function renderProviders(providers) {
         'claude-custom',
         'claude-kiro-oauth',
         'openai-qwen-oauth',
+        'openai-iflow-oauth',
         'openaiResponses-custom'
     ];
     
@@ -321,7 +322,7 @@ async function openProviderManager(providerType) {
  */
 function generateAuthButton(providerType) {
     // 只为支持OAuth的提供商显示授权按钮
-    const oauthProviders = ['gemini-cli-oauth', 'gemini-antigravity', 'openai-qwen-oauth'];
+    const oauthProviders = ['gemini-cli-oauth', 'gemini-antigravity', 'openai-qwen-oauth', 'openai-iflow-oauth'];
     
     if (!oauthProviders.includes(providerType)) {
         return '';
@@ -370,6 +371,7 @@ function getAuthFilePath(provider) {
         'gemini-cli-oauth': '~/.gemini/oauth_creds.json',
         'gemini-antigravity': '~/.antigravity/oauth_creds.json',
         'openai-qwen-oauth': '~/.qwen/oauth_creds.json',
+        'openai-iflow-oauth': '~/.iflow/oauth_creds.json',
         'claude-kiro-oauth': '~/.aws/sso/cache/kiro-auth-token.json'
     };
     return authFilePaths[provider] || t('auth.path.unknown');

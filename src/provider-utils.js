@@ -42,6 +42,16 @@ export const PROVIDER_MAPPINGS = [
         needsProjectId: false
     },
     {
+        // iFlow OAuth 配置
+        dirName: 'iflow',
+        patterns: ['configs/iflow/', '/iflow/'],
+        providerType: 'openai-iflow-oauth',
+        credPathKey: 'IFLOW_OAUTH_CREDS_FILE_PATH',
+        defaultCheckModel: 'gpt-4o-mini',
+        displayName: 'iFlow OAuth',
+        needsProjectId: false
+    },
+    {
         // Antigravity OAuth 配置
         dirName: 'antigravity',
         patterns: ['configs/antigravity/', '/antigravity/'],

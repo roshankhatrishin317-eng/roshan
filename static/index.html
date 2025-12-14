@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta name="theme-color" content="#059669">
     <meta name="description" content="AIClient2API 管理控制台 - 统一管理AI服务提供商">
-    <title>AIClient2API - 管理控制台</title>
+    <title>Shinmen API - Management Console</title>
     <link rel="stylesheet" href="app/styles.css">
     <link rel="stylesheet" href="app/mobile.css">
     <link rel="stylesheet" href="app/monitor.css">
@@ -16,7 +16,7 @@
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1><i class="fas fa-robot"></i> <span class="header-title" data-i18n="app.title">AIClient2API 管理控制台</span></h1>
+                <h1><i class="fas fa-bolt"></i> <span class="header-title" data-i18n="app.title">Shinmen API</span></h1>
                 <div class="header-controls">
                     <span class="status-badge" id="serverStatus">
                         <i class="fas fa-circle"></i> <span class="status-text" data-i18n="app.connecting">连接中...</span>
@@ -384,7 +384,7 @@
                                         <button class="protocol-tab" data-protocol="openai" data-i18n="routing.protocol.openai">OpenAI协议</button>
                                         <button class="protocol-tab active" data-protocol="claude" data-i18n="routing.protocol.claude">Claude协议</button>
                                     </div>
-                                    
+
                                     <!-- OpenAI协议示例 -->
                                     <div class="protocol-content" data-protocol="openai">
                                         <div class="endpoint-info">
@@ -403,7 +403,7 @@
   }'</code></pre>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Claude协议示例 -->
                                     <div class="protocol-content active" data-protocol="claude">
                                         <div class="endpoint-info">
@@ -424,7 +424,61 @@
                                     </div>
                                 </div>
                             </div>
-                    
+
+                            <div class="routing-example-card" data-provider="openai-iflow-oauth-card">
+                                <div class="routing-card-header">
+                                    <i class="fas fa-cloud"></i>
+                                    <h4>iFlow OAuth</h4>
+                                    <span class="provider-badge oauth">多模型聚合</span>
+                                </div>
+                                <div class="routing-card-content">
+                                    <!-- 协议标签切换 -->
+                                    <div class="protocol-tabs">
+                                        <button class="protocol-tab" data-protocol="openai">OpenAI协议</button>
+                                        <button class="protocol-tab active" data-protocol="claude">Claude协议</button>
+                                    </div>
+
+                                    <!-- OpenAI协议示例 -->
+                                    <div class="protocol-content" data-protocol="openai">
+                                        <div class="endpoint-info">
+                                            <label>端点路径:</label>
+                                            <code class="endpoint-path">/openai-iflow-oauth/v1/chat/completions</code>
+                                        </div>
+                                        <div class="usage-example">
+                                            <label>使用示例 (OpenAI格式):</label>
+                                            <pre><code>curl http://localhost:3000/openai-iflow-oauth/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "max_tokens": 1000
+  }'</code></pre>
+                                        </div>
+                                    </div>
+
+                                    <!-- Claude协议示例 -->
+                                    <div class="protocol-content active" data-protocol="claude">
+                                        <div class="endpoint-info">
+                                            <label>端点路径:</label>
+                                            <code class="endpoint-path">/openai-iflow-oauth/v1/messages</code>
+                                        </div>
+                                        <div class="usage-example">
+                                            <label>使用示例 (Claude格式):</label>
+                                            <pre><code>curl http://localhost:3000/openai-iflow-oauth/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 1000,
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+
                     <!-- Contact and Sponsor Section -->
                     <div class="contact-section">
                         <h3><i class="fas fa-qrcode"></i> <span data-i18n="contact.title">联系与赞助</span></h3>
@@ -480,6 +534,7 @@
                                     <option value="claude-custom">Claude Custom</option>
                                     <option value="claude-kiro-oauth">Claude Kiro OAuth</option>
                                     <option value="openai-qwen-oauth">Qwen OAuth</option>
+                                    <option value="openai-iflow-oauth">iFlow OAuth</option>
                                     <option value="openaiResponses-custom">OpenAI Responses</option>
                                 </select>
                             </div>
@@ -612,7 +667,76 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
+                            <!-- iFlow OAuth 配置 -->
+                            <div class="provider-config" data-provider="openai-iflow-oauth" style="display: none;">
+                                <div class="form-group">
+                                    <label>认证方式</label>
+                                    <div class="radio-group">
+                                        <label class="radio-label">
+                                            <input type="radio" name="iflowAuthType" value="oauth" checked>
+                                            <span>OAuth认证 (手机号登录)</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="iflowAuthType" value="cookie">
+                                            <span>Cookie认证 (BXAuth)</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="iflowAuthType" value="file">
+                                            <span>凭据文件</span>
+                                        </label>
+                                        <label class="radio-label">
+                                            <input type="radio" name="iflowAuthType" value="base64">
+                                            <span>Base64编码</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="iflowOauthGroup">
+                                    <label>OAuth认证</label>
+                                    <div class="oauth-actions">
+                                        <button type="button" class="btn btn-primary" id="iflowStartOAuth">
+                                            <i class="fas fa-sign-in-alt"></i> 开始OAuth认证
+                                        </button>
+                                        <small class="form-text">
+                                            <i class="fas fa-info-circle"></i>
+                                            点击后将打开浏览器进行手机号登录认证，认证成功后凭据将自动保存到 ~/.iflow/oauth_creds.json
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="iflowCookieGroup" style="display: none;">
+                                    <label for="iflowCookie">BXAuth Cookie</label>
+                                    <textarea id="iflowCookie" class="form-control" rows="3" placeholder="请输入从 platform.iflow.cn 获取的Cookie（需包含BXAuth字段）"></textarea>
+                                    <div class="oauth-actions" style="margin-top: 10px;">
+                                        <button type="button" class="btn btn-primary" id="iflowAuthWithCookie">
+                                            <i class="fas fa-cookie"></i> 使用Cookie认证
+                                        </button>
+                                    </div>
+                                    <small class="form-text">
+                                        <i class="fas fa-info-circle"></i>
+                                        从浏览器开发者工具中复制 platform.iflow.cn 的Cookie，需包含 BXAuth 字段
+                                    </small>
+                                </div>
+                                <div class="form-group" id="iflowCredsFileGroup" style="display: none;">
+                                    <label for="iflowOauthCredsFilePath">OAuth凭据文件路径</label>
+                                    <div class="file-input-group">
+                                        <input type="text" id="iflowOauthCredsFilePath" class="form-control" placeholder="例如: ~/.iflow/oauth_creds.json">
+                                        <button type="button" class="btn btn-outline upload-btn" data-target="iflowOauthCredsFilePath" aria-label="上传文件">
+                                            <i class="fas fa-upload"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="iflowCredsBase64Group" style="display: none;">
+                                    <label for="iflowOauthCredsBase64">OAuth凭据 (Base64)</label>
+                                    <textarea id="iflowOauthCredsBase64" class="form-control" rows="3" placeholder="请输入Base64编码的OAuth凭据"></textarea>
+                                </div>
+                                <div class="iflow-status-panel" id="iflowStatusPanel" style="display: none; margin-top: 15px; padding: 10px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-check-circle" style="color: #22c55e;"></i>
+                                        <span id="iflowStatusText">认证状态: 未知</span>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- OpenAI Responses 配置 -->
                             <div class="provider-config" data-provider="openaiResponses-custom" style="display: none;">
                                 <div class="form-group password-input-group">
@@ -843,6 +967,11 @@
                     <!-- Traffic Metrics -->
                     <h4 style="margin-bottom: 1rem; color: #6b7280; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Traffic Overview</h4>
                     <div class="monitor-grid">
+                        <div class="monitor-card" style="border-left: 4px solid #f59e0b;">
+                            <h3><i class="fas fa-bolt" style="color: #f59e0b;"></i> Transactions / Sec</h3>
+                            <div class="value" id="tps">0</div>
+                            <div class="unit">TPS (Instant)</div>
+                        </div>
                         <div class="monitor-card primary">
                             <h3><i class="fas fa-bolt" style="color: #059669;"></i> Active Requests</h3>
                             <div class="value" id="activeRequests">0</div>
@@ -868,6 +997,11 @@
                     <!-- Token Metrics -->
                     <h4 style="margin-bottom: 1rem; color: #6b7280; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.05em;">Token Usage</h4>
                     <div class="monitor-grid">
+                         <div class="monitor-card" style="border-left: 4px solid #10b981;">
+                            <h3><i class="fas fa-coins" style="color: #10b981;"></i> Total Tokens</h3>
+                            <div class="value" id="totalTokens">0</div>
+                            <div class="unit">Input + Output</div>
+                        </div>
                          <div class="monitor-card" style="border-left: 4px solid #2563eb;">
                             <h3><i class="fas fa-arrow-down" style="color: #2563eb;"></i> Total Input</h3>
                             <div class="value" id="totalInput" style="color: #2563eb;">0</div>

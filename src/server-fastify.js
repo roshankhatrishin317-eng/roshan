@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
+import fastifyMultipart from '@fastify/multipart';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
@@ -90,14 +91,34 @@ async function startServer() {
   server.setValidatorCompiler(validatorCompiler);
   server.setSerializerCompiler(serializerCompiler);
 
+  // Register multipart/form-data support
+  await server.register(fastifyMultipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB file size limit
+      files: 1, // Max 1 file per request
+    },
+  });
+
   // Register middleware plugins
   await server.register(requestTracingPlugin);
   await server.register(compressionPlugin, { threshold: 1024, level: 6 });
 
-  // Serve Static Files (UI)
+  // Serve Static Files (UI) at /shin
   server.register(fastifyStatic, {
     root: path.join(__dirname, '../static'),
-    prefix: '/',
+    prefix: '/shin/',
+    redirect: true,
+    index: 'index.html',
+  });
+
+  // Redirect /shin to /shin/ for static files
+  server.get('/shin', async (request, reply) => {
+    return reply.redirect('/shin/');
+  });
+
+  // Welcome message at root
+  server.get('/', async (request, reply) => {
+    return { message: 'Welcome to Shinmen API' };
   });
 
   // Register Routes
@@ -563,7 +584,7 @@ async function startServer() {
     console.log(`   - Metrics:    http://${host}:${port}/metrics`);
     console.log(`   - Prometheus: http://${host}:${port}/metrics/prometheus`);
     console.log(`   - Circuits:   http://${host}:${port}/circuits`);
-    console.log(`   - UI:         http://${host}:${port}/`);
+    console.log(`   - UI:         http://${host}:${port}/shin`);
     
     // Pre-warm connection pools
     const customOrigins = [];

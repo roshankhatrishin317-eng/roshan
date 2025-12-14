@@ -36,8 +36,8 @@ const FULL_MODEL_MAPPING = {
     "claude-sonnet-4-5-20250929": "CLAUDE_SONNET_4_5_20250929_V1_0",
     "claude-sonnet-4-20250514": "CLAUDE_SONNET_4_20250514_V1_0",
     "claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0",
-    "amazonq-claude-sonnet-4-20250514": "CLAUDE_SONNET_4_20250514_V1_0",
-    "amazonq-claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0"
+    "shin-claude-sonnet-4-20250514": "CLAUDE_SONNET_4_20250514_V1_0",
+    "shin-claude-3-7-sonnet-20250219": "CLAUDE_3_7_SONNET_20250219_V1_0"
 };
 
 // 只保留 KIRO_MODELS 中存在的模型映射
@@ -611,27 +611,39 @@ async initializeAuth(forceRefresh = false) {
         const history = [];
         let startIndex = 0;
 
-        // Handle system prompt
+        // Handle system prompt - Use XML-style tags to clearly separate system instructions
+        // This helps Claude recognize the system prompt even when embedded in user message
         if (systemPrompt) {
+            // Format system prompt with clear delimiters that Claude recognizes
+            const formattedSystemPrompt = `<system_instructions>
+${systemPrompt}
+</system_instructions>`;
+
             // If the first message is a user message, prepend system prompt to it
             if (processedMessages[0].role === 'user') {
                 let firstUserContent = this.getContentText(processedMessages[0]);
                 history.push({
                     userInputMessage: {
-                        content: `${systemPrompt}\n\n${firstUserContent}`,
+                        content: `${formattedSystemPrompt}\n\n<user_message>\n${firstUserContent}\n</user_message>`,
                         modelId: codewhispererModel,
                         origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR,
                     }
                 });
                 startIndex = 1; // Start processing from the second message
             } else {
-                // If the first message is not a user message, or if there's no initial user message,
-                // add system prompt as a standalone user message.
+                // If the first message is not a user message, add system prompt as standalone
+                // with instruction to acknowledge and await user input
                 history.push({
                     userInputMessage: {
-                        content: systemPrompt,
+                        content: `${formattedSystemPrompt}\n\nAcknowledge these instructions and await the user's first message.`,
                         modelId: codewhispererModel,
                         origin: KIRO_CONSTANTS.ORIGIN_AI_EDITOR,
+                    }
+                });
+                // Add a brief assistant acknowledgment to maintain conversation flow
+                history.push({
+                    assistantResponseMessage: {
+                        content: 'Understood. I will follow these instructions.'
                     }
                 });
             }

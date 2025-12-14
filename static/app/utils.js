@@ -65,7 +65,10 @@ function getFieldLabel(key) {
         'PROJECT_ID': t('label.projectId'),
         'GEMINI_OAUTH_CREDS_FILE_PATH': t('label.credsFile'),
         'KIRO_OAUTH_CREDS_FILE_PATH': t('label.credsFile'),
-        'QWEN_OAUTH_CREDS_FILE_PATH': t('label.credsFile')
+        'QWEN_OAUTH_CREDS_FILE_PATH': t('label.credsFile'),
+        'IFLOW_OAUTH_CREDS_FILE_PATH': t('label.credsFile'),
+        'IFLOW_OAUTH_CREDS_BASE64': t('label.credsBase64') || 'OAuth Creds (Base64)',
+        'ANTIGRAVITY_OAUTH_CREDS_FILE_PATH': t('label.credsFile')
     };
     
     return labelMap[key] || key;
@@ -148,6 +151,20 @@ function getProviderTypeFields(providerType) {
                 label: t('label.credsFile'),
                 type: 'text',
                 placeholder: t('label.credsFilePlaceholder', {path: '~/.qwen/oauth_creds.json'})
+            }
+        ],
+        'openai-iflow-oauth': [
+            {
+                id: 'IflowOauthCredsFilePath',
+                label: t('label.credsFile'),
+                type: 'text',
+                placeholder: t('label.credsFilePlaceholder', {path: '~/.iflow/oauth_creds.json'})
+            },
+            {
+                id: 'IflowOauthCredsBase64',
+                label: t('label.credsBase64') || 'OAuth Creds (Base64)',
+                type: 'text',
+                placeholder: 'Base64 encoded credentials'
             }
         ],
         'gemini-antigravity': [

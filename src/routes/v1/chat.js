@@ -3,6 +3,8 @@ import { CONFIG } from '../../config-manager.js';
 import { metrics } from '../../metrics/metrics-core.js';
 import { getApiService, getProviderPoolManager } from '../../service-manager.js';
 import { handleContentGenerationRequest, ENDPOINT_TYPE } from '../../common.js';
+import { getProviderByModel, resolveModelAlias } from '../../provider-models.js';
+import deepmerge from 'deepmerge';
 
 export default async function (fastify, opts) {
   fastify.post('/chat/completions', {
@@ -18,9 +20,31 @@ export default async function (fastify, opts) {
     metrics.trackRequestStart();
 
     try {
-        // Use the existing Service Manager to get the correct provider (Pools, OAuth, etc.)
-        const apiService = await getApiService(CONFIG, model);
+        // Deep copy config for this request
+        let currentConfig = deepmerge({}, CONFIG);
+        
+        // Force iFlow provider for specific models (no auto-detect, direct routing)
+        if (model) {
+            const detectedProvider = getProviderByModel(model);
+            if (detectedProvider) {
+                // Always switch to the detected provider for these models
+                if (detectedProvider !== currentConfig.MODEL_PROVIDER) {
+                    request.log.info({ from: currentConfig.MODEL_PROVIDER, to: detectedProvider }, 'MODEL_PROVIDER switched based on model');
+                    currentConfig.MODEL_PROVIDER = detectedProvider;
+                }
+            }
+        }
+        
+        // Get provider pool manager first to check for pools
         const providerPoolManager = getProviderPoolManager();
+        
+        // Load provider pools into currentConfig if available
+        if (providerPoolManager && providerPoolManager.providerPools) {
+            currentConfig.providerPools = providerPoolManager.providerPools;
+        }
+        
+        // Use the existing Service Manager to get the correct provider (Pools, OAuth, etc.)
+        const apiService = await getApiService(currentConfig, model);
         
         // Delegate to the unified content generation handler
         // This handles:
@@ -33,10 +57,10 @@ export default async function (fastify, opts) {
             reply.raw,
             apiService,
             ENDPOINT_TYPE.OPENAI_CHAT, // We assume this endpoint receives OpenAI format
-            CONFIG,
-            CONFIG.PROMPT_LOG_FILENAME,
+            currentConfig,
+            currentConfig.PROMPT_LOG_FILENAME,
             providerPoolManager,
-            CONFIG.uuid,
+            currentConfig.uuid,
             request.body // Pass the pre-parsed body
         );
 
